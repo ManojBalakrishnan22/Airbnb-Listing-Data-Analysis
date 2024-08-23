@@ -13,6 +13,7 @@ db_name = 'airbnb'
 
 class StreamlitApp:
     def __init__(self):
+        """Init Part"""
         self.df = self.fetch_data()
 
     def fetch_data(self):
@@ -27,6 +28,7 @@ class StreamlitApp:
         return df
 
     def plot_room_type_distribution(self, df):
+        """to count romm type for advance page """
         room_type_counts = df['room_type'].value_counts().reset_index()
         room_type_counts.columns = ['room_type', 'count']
         
@@ -34,18 +36,8 @@ class StreamlitApp:
                           title='Room Type Distribution')
         return fig
 
-    def plot_price_vs_reviews(self, df):
-        fig = px.scatter(df, x='number_of_reviews', y='price', color='property_type', 
-                         size='review_scores_rating', hover_data=['name'],
-                         title='Price vs Number of Reviews',
-                         labels={'number_of_reviews': 'Number of Reviews', 'price': 'Price'},
-                         log_x=True, log_y=True)
-        
-        fig.update_layout(xaxis_title='Number of Reviews (log scale)', 
-                          yaxis_title='Price (log scale)')
-        return fig
-
     def plot_price_heatmap(self, df):
+        """To create heatmap for the room&property type vs price for advance page"""
         pivot = df.pivot_table(values='price', index='property_type', columns='room_type', aggfunc='mean')
         fig = px.imshow(pivot, text_auto=True, aspect="auto",
                         title="Average Price Heatmap by Property Type and Room Type")
@@ -54,27 +46,25 @@ class StreamlitApp:
         return fig
 
     def plot_radar_chart(self, df, hotel_name):
+        """To create radar chart to data expol page"""
         if hotel_name not in df['name'].values:
-            return go.Figure()  # Return empty figure if hotel not found
+            return go.Figure()
 
         hotel = df[df['name'] == hotel_name].iloc[0]
         categories = ['price', 'number_of_reviews', 'review_scores_rating']
         values = [hotel[cat] for cat in categories]
-        
         fig = go.Figure()
-        fig.add_trace(go.Scatterpolar(
-            r=values + [values[0]],  # Closing the circle
-            theta=categories + [categories[0]],  # Closing the circle
-            fill='toself'
-        ))
-
+        fig.add_trace(go.Scatterpolar(r=values + [values[0]],
+                                        theta=categories + [categories[0]],
+                                        fill='toself'))
         fig.update_layout(polar=dict(
             radialaxis=dict(visible=True)
         ), title=f"Review Metrics for {hotel_name}")
-        
+
         return fig
 
     def plot_advanced_map(self, df, map_style='light'):
+        """tO show world for the map page view"""
         df = df[['latitude', 'longitude', 'price', 'name', 'number_of_reviews', 'review_scores_rating']]
         
         layer = pdk.Layer(
@@ -104,10 +94,10 @@ class StreamlitApp:
                 'text': '{name}\nPrice: ${price}\nReviews: {number_of_reviews}\nRating: {review_scores_rating}'
             }
         )
-        
         return deck
 
     def plot_price_distribution_by_property(self, df):
+        """"""
         fig = px.histogram(df, x='price', color='property_type', nbins=50,
                            title='Price Distribution by Property Type',
                            labels={'price': 'Price'})
@@ -163,16 +153,28 @@ class StreamlitApp:
 
         return fig
 
-    def apply_filters(df, filters):
-        for key, (min_val, max_val) in filters.items():
-            if key in df.columns:
-                df = df[(df[key] >= min_val) & (df[key] <= max_val)]
-        return df
-
     def home_page(self):
-        st.title("Airbnb Overview")
+        st.markdown("""
+            <style>
+            .header-container {
+                display: flex;
+                align-items: center;
+            }
+            .header-container img {
+                height: 60px;  
+                margin-right: 20px;
+            }
+            .header-container h1 {
+                margin: 0;
+            }
+            </style>
+            <div class="header-container">
+                <img src="https://www.theriver.asia/wp-content/uploads/2020/01/pngkey.com-airbnb-logo-png-605967.png" alt="Airbnb Logo">
+                <h1>Airbnb Overview</h1>
+            </div>
+            """, unsafe_allow_html=True)
 
-        # Introduction Section
+        # Introduction part
         st.header("Introduction")
         st.write("""
         Airbnb, founded in 2008, is a global online marketplace that connects people seeking accommodations with hosts offering their properties. 
@@ -180,7 +182,7 @@ class StreamlitApp:
         often personalized lodging options that go beyond traditional hotels.
         """)
 
-        # Key Features Section
+        # Features Part
         st.header("Key Features")
         st.write("""
         - **Diverse Accommodations:** Airbnb offers a wide range of lodging options including entire homes, private rooms, shared spaces, and even unique stays like treehouses, castles, and boats.
@@ -191,7 +193,7 @@ class StreamlitApp:
         - **Host Tools:** Hosts have access to a suite of tools for managing their listings, including pricing suggestions, booking management, and analytics.
         """)
 
-        # How It Works Section
+        # Working PArt
         st.header("How It Works")
         st.write("""
         - **Searching:** Users can search for accommodations by entering their destination, travel dates, and number of guests. Filters allow users to narrow down their search based on various preferences such as price range, type of property, and amenities.
@@ -200,17 +202,18 @@ class StreamlitApp:
         - **Reviewing:** After the stay, guests and hosts can leave reviews to share their experiences and provide feedback.
         """)
 
-        # Impact and Innovation Section
+        # Imapact Part
         st.header("Impact and Innovation")
         st.write("""
         - **Economic Impact:** Airbnb has created economic opportunities for millions of hosts around the world, enabling them to earn income by renting out their properties.
         - **Travel Experience:** The platform has contributed to a more personalized travel experience, allowing guests to stay in neighborhoods and properties that offer a more local feel compared to traditional hotels.
         - **Community Building:** Airbnb fosters a sense of community by connecting people from diverse backgrounds and encouraging cultural exchange.
         """)
+
     def data_exploration_page(self):
         st.title("Data Exploration")
 
-        # Sidebar filters
+        # Sidebar Filter
         st.sidebar.subheader("Filter Options")
         print(self.df)
         countries = self.df['country'].unique()
@@ -232,7 +235,6 @@ class StreamlitApp:
 
         st.write(f"Displaying {len(filtered_df)} listings")
 
-        # Display filtered hotels and their prices
         st.subheader("Filtered Hotels and Prices")
         hotel_list = filtered_df[['name', 'price']]
         selected_hotel = st.selectbox("Select a hotel to view details:", hotel_list['name'])
@@ -245,7 +247,6 @@ class StreamlitApp:
     def advanced_analysis_page(self):
         st.title("Advanced Analysis")
 
-        # Sidebar filters
         st.sidebar.subheader("Filter Options")
 
         countries = self.df['country'].unique()
@@ -264,7 +265,6 @@ class StreamlitApp:
         selected_room_types = st.sidebar.multiselect('Select Room Type(s):', room_types, default=room_types)
         filtered_df = filtered_df[filtered_df['room_type'].isin(selected_room_types)]
 
-        # Handle missing or invalid price values
         min_price, max_price = filtered_df['price'].min(), filtered_df['price'].max()
         
         if pd.isna(min_price) or pd.isna(max_price):
@@ -333,7 +333,7 @@ class StreamlitApp:
     def map_page(self):
         st.title("Map Visualization")
 
-        # Sidebar filters
+        # Sidebar FIlters
         st.sidebar.subheader("Filter Options")
 
         countries = self.df['country'].unique()
@@ -427,6 +427,7 @@ class StreamlitApp:
             self.search_page()
 
 if __name__ == "__main__":
+    #main Function
     app = StreamlitApp()
     app.run()
 
