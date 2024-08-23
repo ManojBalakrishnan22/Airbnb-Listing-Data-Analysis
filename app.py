@@ -1,13 +1,8 @@
 import streamlit as st
 import pandas as pd
-import psycopg2
 import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import pydeck as pdk
-import seaborn as sns
-import matplotlib.pyplot as plt
-from io import BytesIO
 from sqlalchemy import create_engine
 
 db_user = 'postgres'
@@ -29,20 +24,7 @@ class StreamlitApp:
         except Exception as e:
             st.error(f"Error fetching data: {e}")
             df = pd.DataFrame()
-
-
-    def plot_price_distribution(self, df):
-        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, 
-                            subplot_titles=('Price Distribution', 'Price Box Plot by Room Type'))
-        
-        fig.add_trace(go.Histogram(x=df['price'], nbinsx=50, name='Price Distribution'),
-                      row=1, col=1)
-        
-        fig.add_trace(go.Box(x=df['room_type'], y=df['price'], name='Price by Room Type'),
-                      row=2, col=1)
-        
-        fig.update_layout(height=800, title_text="Price Analysis")
-        return fig
+        return df
 
     def plot_room_type_distribution(self, df):
         room_type_counts = df['room_type'].value_counts().reset_index()
@@ -144,15 +126,42 @@ class StreamlitApp:
                          labels={'review_scores_rating': 'Review Scores Rating', 'price': 'Price'})
         return fig
 
-    def plot_correlation_heatmap(self, df):
-        correlation = df[['price', 'number_of_reviews', 'review_scores_rating']].corr()
-        plt.figure(figsize=(10, 8))
-        sns.heatmap(correlation, annot=True, cmap='coolwarm', fmt='.2f')
-        plt.title('Correlation Heatmap')
-        buf = BytesIO()
-        plt.savefig(buf, format='png')
-        buf.seek(0)
-        return buf
+    def plot_cancellation_policy_distribution(self, df):
+        # Count the number of hotels for each cancellation policy
+        cancellation_policy_counts = df['cancellation_policy'].value_counts().reset_index()
+        cancellation_policy_counts.columns = ['cancellation_policy', 'number_of_hotels']
+
+        fig = px.bar(cancellation_policy_counts, x='cancellation_policy', y='number_of_hotels',
+                     title='Number of Hotels by Cancellation Policy',
+                     labels={'cancellation_policy': 'Cancellation Policy', 'number_of_hotels': 'Number of Hotels'})
+        return fig
+
+    def plot_availability_vs_hotels(self, df):
+        # Create a new DataFrame to aggregate the number of hotels by availability
+        availability_columns = ['availability_30', 'availability_60', 'availability_90', 'availability_365']
+        availability_dfs = [df[['country'] + [col]].groupby(col).size().reset_index(name='number_of_hotels') for col in
+                            availability_columns]
+
+        fig = go.Figure()
+
+        for availability_df, availability_col in zip(availability_dfs, availability_columns):
+            fig.add_trace(go.Scatter(
+                x=availability_df[availability_col],
+                y=availability_df['number_of_hotels'],
+                mode='lines+markers',
+                hovertemplate='Availability: %{x}<br>' +
+                              'Number of Hotels: %{y}<br>' +
+                              '<extra></extra>',
+                name=availability_col
+            ))
+
+        fig.update_layout(
+            title='Availability vs Number of Hotels',
+            xaxis_title='Availability (Days)',
+            yaxis_title='Number of Hotels'
+        )
+
+        return fig
 
     def apply_filters(df, filters):
         for key, (min_val, max_val) in filters.items():
@@ -203,7 +212,7 @@ class StreamlitApp:
 
         # Sidebar filters
         st.sidebar.subheader("Filter Options")
-
+        print(self.df)
         countries = self.df['country'].unique()
         selected_country = st.sidebar.selectbox('Select Country:', countries, index=0)
         filtered_df = self.df[self.df['country'] == selected_country]
@@ -291,15 +300,9 @@ class StreamlitApp:
         st.write(f"Displaying {len(filtered_df)} listings")
 
         if len(filtered_df) > 0:
-            col1, col2 = st.columns(2)
 
-            with col1:
-                st.subheader("Price Distribution and Box Plot")
-                st.plotly_chart(self.plot_price_distribution(filtered_df), use_container_width=True)
-
-            with col2:
-                st.subheader("Room Type Distribution")
-                st.plotly_chart(self.plot_room_type_distribution(filtered_df), use_container_width=True)
+            st.subheader("Room Type Distribution")
+            st.plotly_chart(self.plot_room_type_distribution(filtered_df), use_container_width=True)
 
             st.subheader("Price Heatmap")
             st.plotly_chart(self.plot_price_heatmap(filtered_df), use_container_width=True)
@@ -317,9 +320,12 @@ class StreamlitApp:
             st.subheader("Price vs Review Scores")
             st.plotly_chart(self.plot_price_vs_review_scores(filtered_df), use_container_width=True)
 
-            st.subheader("Correlation Heatmap")
-            heatmap_buf = self.plot_correlation_heatmap(filtered_df)
-            st.image(heatmap_buf, caption="Correlation Heatmap")
+            st.subheader("Cancellation Policy Distribution")
+            st.plotly_chart(self.plot_cancellation_policy_distribution(filtered_df), use_container_width=True)
+
+            st.subheader("Availability vs Number of Hotels")
+            st.plotly_chart(self.plot_availability_vs_hotels(filtered_df), use_container_width=True)
+
         else:
             st.write("No data available for the selected filters.")
 
@@ -390,6 +396,22 @@ class StreamlitApp:
 
     def run(self):
         st.set_page_config(layout="wide")
+        st.markdown(
+            """
+            <style>
+            .main {
+                background-color: #ff8a72;  /* Change to your desired background color */
+            }
+            .st-emotion-cache-6qob1r {
+                background-color: #72c9c9;  /* Change to your desired background color */
+            }
+            .st-emotion-cache-12fmjuu {
+                background-color: #ff8a72;  /* Change to your desired background color */
+            }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
         st.sidebar.title("Navigation")
         options = st.sidebar.radio("Choose a page", ["Home", "Data Exploration", "Advanced Analysis", "Map", "Search"])
         
