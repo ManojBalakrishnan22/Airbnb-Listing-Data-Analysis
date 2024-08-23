@@ -215,7 +215,6 @@ class StreamlitApp:
 
         # Sidebar Filter
         st.sidebar.subheader("Filter Options")
-        print(self.df)
         countries = self.df['country'].unique()
         selected_country = st.sidebar.selectbox('Select Country:', countries, index=0)
         filtered_df = self.df[self.df['country'] == selected_country]
@@ -331,52 +330,56 @@ class StreamlitApp:
 
 
     def map_page(self):
-        st.title("Map Visualization")
+        try:
+            st.title("Map Visualization")
 
-        # Sidebar FIlters
-        st.sidebar.subheader("Filter Options")
+            # Sidebar FIlters
+            st.sidebar.subheader("Filter Options")
 
-        countries = self.df['country'].unique()
-        selected_country = st.sidebar.selectbox('Select Country:', countries, index=0)
-        filtered_df = self.df[self.df['country'] == selected_country]
+            countries = self.df['country'].unique()
+            selected_country = st.sidebar.selectbox('Select Country:', countries, index=0)
+            filtered_df = self.df[self.df['country'] == selected_country]
 
-        if filtered_df.empty:
-            st.write("No listings available for the selected country.")
-            return
+            if filtered_df.empty:
+                st.write("No listings available for the selected country.")
+                return
 
-        property_types = filtered_df['property_type'].unique()
-        selected_property_type = st.sidebar.selectbox('Select Property Type:', property_types, index=0)
-        filtered_df = filtered_df[filtered_df['property_type'] == selected_property_type]
+            property_types = filtered_df['property_type'].unique()
+            selected_property_type = st.sidebar.selectbox('Select Property Type:', property_types, index=0)
+            filtered_df = filtered_df[filtered_df['property_type'] == selected_property_type]
 
-        room_types = filtered_df['room_type'].unique()
-        selected_room_types = st.sidebar.multiselect('Select Room Type(s):', room_types, default=room_types)
-        filtered_df = filtered_df[filtered_df['room_type'].isin(selected_room_types)]
+            room_types = filtered_df['room_type'].unique()
+            selected_room_types = st.sidebar.multiselect('Select Room Type(s):', room_types, default=room_types)
+            filtered_df = filtered_df[filtered_df['room_type'].isin(selected_room_types)]
 
-        min_price, max_price = int(filtered_df['price'].min()), int(filtered_df['price'].max())
-        selected_min_price = st.sidebar.slider('Select Minimum Price:', min_value=min_price, max_value=max_price, value=min_price)
-        selected_max_price = st.sidebar.slider('Select Maximum Price:', min_value=min_price, max_value=max_price, value=max_price)
-        filtered_df = filtered_df[(filtered_df['price'] >= selected_min_price) & (filtered_df['price'] <= selected_max_price)]
+            min_price, max_price = int(filtered_df['price'].min()), int(filtered_df['price'].max())
+            selected_min_price = st.sidebar.slider('Select Minimum Price:', min_value=min_price, max_value=max_price, value=min_price)
+            selected_max_price = st.sidebar.slider('Select Maximum Price:', min_value=min_price, max_value=max_price, value=max_price)
+            filtered_df = filtered_df[(filtered_df['price'] >= selected_min_price) & (filtered_df['price'] <= selected_max_price)]
 
-        if filtered_df.empty:
-            st.write("No listings available for the selected price range.")
-            return
+            if filtered_df.empty:
+                st.write("No listings available for the selected price range.")
+                return
 
-        min_reviews, max_reviews = int(filtered_df['number_of_reviews'].min()), int(filtered_df['number_of_reviews'].max())
-        selected_min_reviews = st.sidebar.slider('Select Minimum Number of Reviews:', min_value=min_reviews, max_value=max_reviews, value=min_reviews)
-        selected_max_reviews = st.sidebar.slider('Select Maximum Number of Reviews:', min_value=min_reviews, max_value=max_reviews, value=max_reviews)
-        filtered_df = filtered_df[(filtered_df['number_of_reviews'] >= selected_min_reviews) & (filtered_df['number_of_reviews'] <= selected_max_reviews)]
+            min_reviews, max_reviews = int(filtered_df['number_of_reviews'].min()), int(filtered_df['number_of_reviews'].max())
+            selected_min_reviews = st.sidebar.slider('Select Minimum Number of Reviews:', min_value=min_reviews, max_value=max_reviews, value=min_reviews)
+            selected_max_reviews = st.sidebar.slider('Select Maximum Number of Reviews:', min_value=min_reviews, max_value=max_reviews, value=max_reviews)
+            filtered_df = filtered_df[(filtered_df['number_of_reviews'] >= selected_min_reviews) & (filtered_df['number_of_reviews'] <= selected_max_reviews)]
 
-        if filtered_df.empty:
-            st.write("No listings available for the selected number of reviews.")
-            return
+            if filtered_df.empty:
+                st.write("No listings available for the selected number of reviews.")
+                return
 
-        selected_map_style = st.sidebar.selectbox('Select Map Style:', ['light', 'dark'], index=0)
+            selected_map_style = st.sidebar.selectbox('Select Map Style:', ['light', 'dark'], index=0)
 
-        st.write(f"Displaying {len(filtered_df)} listings on the map")
+            st.write(f"Displaying {len(filtered_df)} listings on the map")
 
-        if len(filtered_df) > 0:
-            st.pydeck_chart(self.plot_advanced_map(filtered_df, map_style=selected_map_style))
-        else:
+            if len(filtered_df) > 0:
+                st.pydeck_chart(self.plot_advanced_map(filtered_df, map_style=selected_map_style))
+            else:
+                st.write("No data available for the selected filters.")
+
+        except Exception as e:
             st.write("No data available for the selected filters.")
 
     def search_page(self):
@@ -395,36 +398,39 @@ class StreamlitApp:
             st.write("No search term entered.")
 
     def run(self):
-        st.set_page_config(layout="wide")
-        st.markdown(
-            """
-            <style>
-            .main {
-                background-color: #ff8a72;  /* Change to your desired background color */
-            }
-            .st-emotion-cache-6qob1r {
-                background-color: #72c9c9;  /* Change to your desired background color */
-            }
-            .st-emotion-cache-12fmjuu {
-                background-color: #ff8a72;  /* Change to your desired background color */
-            }
-            </style>
-            """,
-            unsafe_allow_html=True
-        )
-        st.sidebar.title("Navigation")
-        options = st.sidebar.radio("Choose a page", ["Home", "Data Exploration", "Advanced Analysis", "Map", "Search"])
-        
-        if options == "Home":
-            self.home_page()
-        elif options == "Data Exploration":
-            self.data_exploration_page()
-        elif options == "Advanced Analysis":
-            self.advanced_analysis_page()
-        elif options == "Map":
-            self.map_page()
-        elif options == "Search":
-            self.search_page()
+        try:
+            st.set_page_config(layout="wide")
+            st.markdown(
+                """
+                <style>
+                .main {
+                    background-color: #ff8a72;  /* Change to your desired background color */
+                }
+                .st-emotion-cache-6qob1r {
+                    background-color: #72c9c9;  /* Change to your desired background color */
+                }
+                .st-emotion-cache-12fmjuu {
+                    background-color: #ff8a72;  /* Change to your desired background color */
+                }
+                </style>
+                """,
+                unsafe_allow_html=True
+            )
+            st.sidebar.title("Navigation")
+            options = st.sidebar.radio("Choose a page", ["Home", "Data Exploration", "Advanced Analysis", "Map", "Search"])
+
+            if options == "Home":
+                self.home_page()
+            elif options == "Data Exploration":
+                self.data_exploration_page()
+            elif options == "Advanced Analysis":
+                self.advanced_analysis_page()
+            elif options == "Map":
+                self.map_page()
+            elif options == "Search":
+                self.search_page()
+        except Exception as e:
+            st.write("No data available for the selected filters.")
 
 if __name__ == "__main__":
     #main Function
